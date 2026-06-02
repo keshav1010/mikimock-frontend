@@ -35,6 +35,9 @@ const InterviewRoom = () => {
     const navigate =
         useNavigate();
 
+    const timerIntervalRef =
+    useRef<number | null>(null);
+
     const localVideoRef =
         useRef<HTMLDivElement>(null);
 
@@ -84,6 +87,64 @@ const InterviewRoom = () => {
 
     const isMountedRef =
     useRef(true);
+
+    const fetchTimerUntilStarted =
+    async () => {
+
+    if (timerIntervalRef.current) {
+        return;
+    }
+
+    timerIntervalRef.current =
+        window.setInterval(async () => {
+
+            try {
+
+                const timerResponse =
+                    await getRoomTimer(
+                        roomCode
+                    );
+
+                const seconds =
+                    timerResponse
+                        .data
+                        .data
+                        .remainingSeconds;
+
+                console.log(
+                    "Timer seconds =",
+                    seconds
+                );
+
+                if (seconds !== null) {
+
+                    setRemainingSeconds(
+                        seconds
+                    );
+
+                    if (
+                        timerIntervalRef.current
+                    ) {
+
+                        clearInterval(
+                            timerIntervalRef.current
+                        );
+
+                        timerIntervalRef.current =
+                            null;
+                    }
+                }
+
+                    } catch (error) {
+
+                        console.error(
+                            "Timer fetch failed",
+                            error
+                        );
+                    }
+
+                }, 3000);
+        };
 
     // ------------------------------------ Timer UseEffect --------------------
     useEffect(() => {
@@ -215,15 +276,10 @@ const InterviewRoom = () => {
                 tracks
             );
             await markRoomJoined(roomCode);
-
+            
             setJoined(true);
-            const timerResponse =
-            await getRoomTimer(roomCode);
 
-            setRemainingSeconds(
-                timerResponse.data.data.remainingSeconds
-            );
-            setJoined(true);
+            await fetchTimerUntilStarted();
         };
 
         startCall();
@@ -239,7 +295,16 @@ const InterviewRoom = () => {
 
     const cleanupMediaOnly = async () => {
 
-    if (localTracksRef.current) {
+        if (localTracksRef.current) {
+
+            if (timerIntervalRef.current) {
+
+            clearInterval(timerIntervalRef.current
+            );
+
+            timerIntervalRef.current =
+                null;
+            }
 
         localTracksRef.current[0].stop();
         localTracksRef.current[0].close();
@@ -448,8 +513,14 @@ const InterviewRoom = () => {
                             {
                                 joined && remainingSeconds === null && (
 
-                                    <p className="text-yellow-400 mt-2">
+                                    <p className="
+                                        text-yellow-400
+                                        mt-2
+                                        font-semibold
+                                    ">
+
                                         Waiting for partner to join...
+
                                     </p>
                                 )
                             }
