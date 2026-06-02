@@ -5,6 +5,10 @@ import {
 } from "react";
 
 import {
+    getRoomTimer
+} from "../services/RoomTimerService";
+
+import {
     useLocation,
     useNavigate
 } from "react-router-dom";
@@ -49,6 +53,22 @@ const InterviewRoom = () => {
     const [joined, setJoined] =
         useState(false);
 
+    const [remainingSeconds, setRemainingSeconds] =
+        useState<number | null>(null);
+
+        const formatTime = (
+            seconds: number
+        ) => {
+
+            const mins =
+                Math.floor(seconds / 60);
+
+            const secs =
+                seconds % 60;
+
+            return `${mins}:${String(secs).padStart(2, "0")}`;
+        };
+
     const roomData =
     location.state as {
         appId: string;
@@ -64,6 +84,42 @@ const InterviewRoom = () => {
 
     const isMountedRef =
     useRef(true);
+
+    // ------------------------------------ Timer UseEffect --------------------
+    useEffect(() => {
+
+            if (remainingSeconds === null) {
+                return;
+            }
+
+            if (remainingSeconds <= 0) {
+
+                handleLeave();
+
+                return;
+            }
+
+            const interval =
+                setInterval(() => {
+
+                    setRemainingSeconds(prev => {
+
+                        if (prev === null) {
+                            return null;
+                        }
+
+                        return Math.max(
+                            0,
+                            prev - 1
+                        );
+                    });
+
+                }, 1000);
+
+            return () =>
+                clearInterval(interval);
+
+        }, [remainingSeconds]);
 
     useEffect(() => {
 
@@ -160,6 +216,13 @@ const InterviewRoom = () => {
             );
             await markRoomJoined(roomCode);
 
+            setJoined(true);
+            const timerResponse =
+            await getRoomTimer(roomCode);
+
+            setRemainingSeconds(
+                timerResponse.data.data.remainingSeconds
+            );
             setJoined(true);
         };
 
@@ -278,6 +341,23 @@ const InterviewRoom = () => {
                         </p>
 
                     </div>
+                    {
+                        remainingSeconds !== null && (
+
+                            <p className="
+                                text-green-400
+                                mt-2
+                                font-bold
+                                text-xl
+                            ">
+
+                                Time Left:
+                                {" "}
+                                {formatTime(remainingSeconds)}
+
+                            </p>
+                        )
+                    }
 
                     <button
                         onClick={handleLeave}
@@ -365,7 +445,14 @@ const InterviewRoom = () => {
                             "
                         >
 
-                            Waiting for partner...
+                            {
+                                joined && remainingSeconds === null && (
+
+                                    <p className="text-yellow-400 mt-2">
+                                        Waiting for partner to join...
+                                    </p>
+                                )
+                            }
 
                         </div>
 
@@ -373,7 +460,7 @@ const InterviewRoom = () => {
 
                 </div>
 
-                {
+                {/* {
                     joined && (
 
                         <p className="
@@ -386,7 +473,7 @@ const InterviewRoom = () => {
 
                         </p>
                     )
-                }
+                } */}
 
             </div>
 
